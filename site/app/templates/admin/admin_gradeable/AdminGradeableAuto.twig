@@ -1,0 +1,243 @@
+<div class="electronic_file">
+
+    <div class="option-title">
+        What are students allowed to do?
+    </div>
+    <div>
+        <fieldset>
+            <legend>View the gradeable on the course home page?</legend>
+            <input type="radio" id="no_student_view_after_grades" name="student_view_after_grades" value="false"
+                    {{ gradeable.isStudentView() and not gradeable.isStudentViewAfterGrades() ? 'checked' : '' }}/> <label for="no_student_view_after_grades">Yes</label>
+            <input type="radio" id="no_student_view" name="student_view" value="false"
+                    {{ not gradeable.isStudentView() ? 'checked' : '' }}/> <label for="no_student_view">No</label>
+            <input type="radio" id="yes_student_view_after_grades" name="student_view_after_grades" value="true"
+                    {{ gradeable.isBulkUpload() ? 'checked' : '' }}/> <label for="yes_student_view_after_grades">When grades are released</label>
+            <div hidden>
+                <input type="radio" id="yes_student_view" name="student_view" value="true"
+                    {{ gradeable.isStudentView() ? 'checked' : '' }} aria-label="student view"/>
+            </div>
+        </fieldset>
+    </div>
+
+    <div id="student_download_view">
+        <div>
+            <fieldset><legend>View and download submitted files? 
+            {% if gradeable.isBulkUpload() %}
+            <span class="red-message" id="view-files-warning"> WARNING: Students will see the grading score and TA feedback but will not be able to download the scanned and uploaded file.</span></legend>
+            {% endif %}
+            <input type="radio" id="yes_student_download" name="student_download" value="true"
+                    {{ gradeable.canStudentDownload() ? 'checked' : '' }}/> <label for="yes_student_download">Yes</label>
+            <input type="radio" id="no_student_download" name="student_download" value="false"
+                    {{ not gradeable.canStudentDownload() ? 'checked' : '' }}/> <label for="no_student_download">No</label></fieldset>
+        </div>
+    </div>
+
+    <div id="student_submit_view">
+        <div>
+            <fieldset><legend>Make new submissions and access all prior versions?</legend>
+            <input type="radio" id="yes_student_submit" name="student_submit" value="true"
+                    {{ gradeable.isStudentSubmit() ? 'checked' : '' }}/> <label for="yes_student_submit">Yes</label>
+            <input type="radio" id="no_student_submit" name="student_submit" value="false"
+                    {{ not gradeable.isStudentSubmit() ? 'checked' : '' }}/> <label for="no_student_submit">No</label></fieldset>
+        </div>
+    </div>
+<br><br>
+
+    <div class="option-title">
+        Should this gradeable be locked from students until they satisfactorily complete a prerequisite assignment?
+    </div>
+    <div>
+        <fieldset>
+            <legend>Previous Gradeable:</legend>
+            <div class="option-input col-md-6" style="padding: 0;">
+                <select name="depends_on" id="gradeable-lock">
+                    <option value="">Select prerequisite gradeable (Off)</option>
+                    {% for template in template_list %}
+                        {% if template.g_id != gradeable.getId() %}
+                            <option value="{{ template.g_id }}" {% if template.g_id == gradeable.getDependsOn() %} selected {% endif %}>{{ template.g_title }} [ {{ template.g_id }} ]</option>
+                        {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+        </fieldset>
+        <fieldset id="gradeable-lock-max-points-field" style="{% if gradeable.getDependsOn() is null %}display: none;{% endif %}">
+            <legend>Autograder Points Required to Unlock:</legend>
+            <input type="number" name="depends_on_points" value="{% if gradeable.getDependsOnPoints() is not null %}{{ gradeable.getDependsOnPoints() }}{% else %}0{% endif %}" id="gradeable-lock-points">
+            <p {% if gradeable.getDependsOn() is null %}hidden{% endif %} id="gradeable-lock-max-points">Out of {{ gradeable_max_points[gradeable.getDependsOn()] }} Maximum Autograding Points</p>
+        </fieldset>
+    </div>
+<br><br>
+
+    <div class="option-title">Choose an autograding configuration:</div>
+            <p> You may specify your <a target=_blank href="https://submitty.org/instructor/assignment_configuration/configuration_path#course-autograding-configuration-directory">
+                "Course Autograding Config Directory"<i style="font-style:normal;" class="fa-question-circle"></i></a>
+                from the Course Settings Page. </p>
+            <p> Manually type the full path to a configuration file, or select from the list below. </p>
+    <p> The dropdown list has all existing configurations that contain the current text.</p>
+    {% for error_message in repository_error_messages %}
+        <div class="config_search_error">({{error_message}})</div>
+    {% endfor %}
+
+    <div class="config_search_error" id="autograding_config_error">
+        {% if not currently_valid_repository %}
+            The current path is not valid, selecting Rebuild Gradeable without changing it will fail.
+        {% endif %}
+    </div>
+
+    <div class="settings">
+        <div>
+            <div class="drop-down" id="config-drop-down">
+                <select name="autograding_config_path" id="autograding_config_selector">
+                    <option>{{ gradeable.getAutogradingConfigPath() }}</option>
+                    {% for path in all_config_paths %}
+                        <option value={{path.1}}>{{path.0}}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <a class="btn btn-primary" style="margin-top: 6px" href="{{ upload_config_url }}">Upload a custom autograding configuration</a>
+    </div>
+
+    <div class="notebook-builder-info">
+        <div class="option-title">Notebook Builder:</div>
+        <div>
+            <a class="btn btn-primary" href="{{ notebook_builder_url ~ '/new' }}">Start New</a>
+            <span>Start a new configuration with notebook builder.</span>
+        </div>
+        <div class="notebook-builder-edit-button-div">
+            <a class="btn btn-primary" href="{{ notebook_builder_url ~ '/edit' }}">Edit Existing</a>
+            <span>Edit the currently selected configuration with notebook builder.</span>
+        </div>
+    </div>
+
+    <div class="btn-container" id="rebuild-gradeable-button">
+        <a class="btn btn-primary key_to_click" tabindex="0" onclick="ajaxRebuildGradeableButton()">Rebuild Gradeable</a>
+    </div>
+
+    <div id="rebuild-status-panel">
+        <span id="rebuild-status-label">Build Status: </span>
+        <div id="rebuild-status"></div>
+    </div>
+
+    <div id="rebuild-log-button">
+        <input type="button" class="btn btn-default key_to_click" tabindex="0" id="open-build-log" type="button" value="Open Build Log" onclick="showBuildLog()" />
+        <input type="button" class="btn btn-primary key_to_click" tabindex="0" id="close-build-log" type="button" value="Close Build Log" onclick="hideBuildLog()" />
+    </div>
+
+    <div class="log-container" hidden>
+        <div class="option-title">Build log:</div>
+        <pre id="build-log-body"></pre>
+    </div>
+
+    <div class="log-container" hidden>
+        <div class="option-title">CMake output:</div>
+        <pre id="cmake-log-body"></pre>
+    </div>
+
+    <div class="log-container" hidden>
+        <div class="option-title">Make output:</div>
+        <pre id="make-log-body"></pre>
+    </div>
+
+</div>
+
+<script>
+    var gradeable_max_autograder_points = {{ gradeable_max_points|json_encode|raw }}
+
+    function onPdfChange() {
+        if($('#yes_pdf_page').is(':checked')) {
+            // $('#pdf_page').show();
+            // $('.pdf_page_input').show();
+            disableElementChildren('#pdf_page', false);
+            disableElementChildren('.pdf_page_input', $('#yes_pdf_page_student').is(':checked'));
+        }
+        else {
+            // $('#pdf_page').hide();
+            // $('.pdf_page_input').hide();
+            disableElementChildren('#pdf_page', true);
+            disableElementChildren('.pdf_page_input', true);
+        }
+    }
+
+    function onStudentViewChange() {
+        if ($('#radio_ef_student_upload').is(':checked') || $('#radio_ef_bulk_upload').is(':checked')) {
+            if ($('#yes_student_view_after_grades').is(':checked')) {
+                $('#radio_ef_student_upload').prop('checked', false);
+                $('#radio_ef_bulk_upload').prop('checked', true);
+                const gradeableTypeString = $('#gradeable-type-string');
+                gradeableTypeString.html(gradeableTypeString.attr('data-bulk'));
+            } else {
+                $('#radio_ef_bulk_upload').prop('checked', false);
+                $('#radio_ef_student_upload').prop('checked', true);
+                const gradeableTypeString = $('#gradeable-type-string');
+                gradeableTypeString.html(gradeableTypeString.attr('data-hw'));
+            }
+        }
+        if($('#yes_student_view').is(':checked')) {
+            disableElementChildren('#student_submit_view', false);
+            disableElementChildren('#student_download_view', false);
+        }
+        else {
+            disableElementChildren('#student_submit_view', true);
+            disableElementChildren('#student_download_view', true);
+            const studentSubmit = $('#no_student_submit');
+            const studentDownload = $('#no_student_download');
+
+            studentSubmit.prop('checked', true);
+            studentDownload.prop('checked', true);
+            studentSubmit.change();
+            studentDownload.change();
+
+            $('input[name=student_view_after_grades]').prop('checked', false);
+            $('input[name=student_download]').prop('checked', false);
+        }
+    }
+
+    function onStudentDownloadChange() {
+        if($('#no_student_download').is(':checked')) {
+            disableElementChildren('#view-files-warning', false);
+        }
+        else {
+            disableElementChildren('#view-files-warning', true);
+        }
+    }
+
+    $(document).ready(function() {
+
+        // Hide PDF settings if not in use
+        onPdfChange();
+        $('[name="pdf_page"]').change(onPdfChange);
+
+        // Hide PDF pages in Rubric if students assign them
+        $('[name="pdf_page_student"]').change(onPdfChange);
+
+        // Only show the settings if the setting is enabled
+        onStudentViewChange();
+        onStudentDownloadChange();
+        $('[name="student_view"]').change(onStudentViewChange);
+        $('[name="student_download"]').change(onStudentDownloadChange);
+
+        $('input[name=student_view_after_grades]').change(function() {
+            const elem = $('#yes_student_view');
+            elem.prop('checked', true);
+            elem.change();
+            const download = $('#no_student_download');
+            download.prop('checked', true);
+            download.change();
+            const sub = $('#no_student_submit');
+            sub.prop('checked', true);
+            sub.change();
+        });
+
+        // Register select2 for #autograding_config_selector
+        // https://stackoverflow.com/a/30021059
+        $('#autograding_config_selector').select2({
+            tags: true,
+            theme: "bootstrap-5",
+            createTag: (params) => ({
+                id: params.term,
+                text: params.term
+            })
+        });
+    });
+</script>
